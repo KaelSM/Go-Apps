@@ -36,6 +36,7 @@ func main() {
 
 	// create a fyne app
 	a := app.NewWithID("my markdown editor")
+	a.Settings().SetTheme(&myTheme{})
 
 	// create a window for the app
 	win := a.NewWindow("Markdown")
