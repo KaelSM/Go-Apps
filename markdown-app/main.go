@@ -2,11 +2,13 @@ package main
 
 import (
 	"io/ioutil"
+	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -109,6 +111,30 @@ func (app *config) createMenuItems(win fyne.Window) {
 	win.SetMainMenu(menu)
 }
 
+// filter so only md files are opened
+var filter = storage.NewExtensionFileFilter([]string{".md", ".markdown", ".MD", ".MARKDOWN"})
+
+// openFunc returns a function that opens a file dialog to load the content of a selected file into the EditWidget.
+//
+// Parameters:
+// - app: a pointer to the config struct which holds the application's configuration and state.
+// - win: the window to which the dialog will be attached.
+//
+// Returns:
+// - func(): a function that opens the file dialog.
+//
+// The function performs the following steps:
+//  1. Creates a new file open dialog with a callback function to handle the file reading process.
+//  2. In the callback function:
+//     a. If an error occurs, it shows an error dialog and returns.
+//     b. If the user cancels the open operation (read is nil), it simply returns.
+//     c. Otherwise, it reads the content of the selected file.
+//     d. Closes the file reader after reading.
+//     e. Sets the text of the EditWidget to the content of the file.
+//     f. Updates the CurrentFile field in the config struct with the URI of the opened file.
+//     g. Updates the window title to include the name of the opened file.
+//     h. Enables the Save menu item.
+//  3. Shows the open dialog.
 func (app *config) openFunc(win fyne.Window) func() {
 	return func() {
 		openDialog := dialog.NewFileOpen(func(read fyne.URIReadCloser, err error) {
@@ -137,6 +163,7 @@ func (app *config) openFunc(win fyne.Window) func() {
 
 		}, win)
 
+		openDialog.SetFilter(filter)
 		openDialog.Show()
 	}
 }
@@ -155,12 +182,15 @@ func (app *config) openFunc(win fyne.Window) func() {
 //  2. In the callback function:
 //     a. If an error occurs, it shows an error dialog and returns.
 //     b. If the user cancels the save operation (write is nil), it simply returns.
-//     c. Otherwise, it writes the content of the EditWidget to the selected file.
-//     d. Updates the CurrentFile field in the config struct with the URI of the saved file.
-//     e. Closes the file writer after writing.
-//     f. Updates the window title to include the name of the saved file.
-//     g. Enables the Save menu item.
-//  3. Shows the save dialog.
+//     c. If the file name does not end with ".md", it shows an information dialog and returns.
+//     d. Otherwise, it writes the content of the EditWidget to the selected file.
+//     e. Updates the CurrentFile field in the config struct with the URI of the saved file.
+//     f. Closes the file writer after writing.
+//     g. Updates the window title to include the name of the saved file.
+//     h. Enables the Save menu item.
+//  3. Sets the default file name to "untitled.md".
+//  4. Sets a filter for the file dialog.
+//  5. Shows the save dialog.
 func (app *config) saveAsFunc(win fyne.Window) func() {
 	return func() {
 		saveDialog := dialog.NewFileSave(func(write fyne.URIWriteCloser, err error) {
@@ -174,6 +204,11 @@ func (app *config) saveAsFunc(win fyne.Window) func() {
 				return
 			}
 
+			if !strings.HasSuffix(strings.ToLower(write.URI().String()), ".md") {
+				dialog.ShowInformation("Error", "Please name your file with .md extension", win)
+				return
+			}
+
 			// save file
 			write.Write([]byte(app.EditWidget.Text))
 			app.CurrentFile = write.URI()
@@ -184,6 +219,9 @@ func (app *config) saveAsFunc(win fyne.Window) func() {
 			app.SaveMenuItem.Disabled = false
 
 		}, win)
+
+		saveDialog.SetFileName("untitled.md")
+		saveDialog.SetFilter(filter)
 		saveDialog.Show()
 	}
 }
