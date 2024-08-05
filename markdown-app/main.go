@@ -96,7 +96,7 @@ func (app *config) createMenuItems(win fyne.Window) {
 
 	// create three menu items
 	openMenuItem := fyne.NewMenuItem("Open...", app.openFunc(win))
-	saveMenuItem := fyne.NewMenuItem("Save", func() {})
+	saveMenuItem := fyne.NewMenuItem("Save", app.saveFunc(win))
 	app.SaveMenuItem = saveMenuItem
 	app.SaveMenuItem.Disabled = true
 	saveAsMenuItem := fyne.NewMenuItem("Save as...", app.saveAsFunc(win))
@@ -113,6 +113,21 @@ func (app *config) createMenuItems(win fyne.Window) {
 
 // filter so only md files are opened
 var filter = storage.NewExtensionFileFilter([]string{".md", ".markdown", ".MD", ".MARKDOWN"})
+
+func (app *config) saveFunc(win fyne.Window) func() {
+	return func() {
+		if app.CurrentFile != nil {
+			write, err := storage.Writer(app.CurrentFile)
+			if err != nil {
+				dialog.ShowError(err, win)
+				return
+			}
+
+			write.Write([]byte(app.EditWidget.Text))
+			defer write.Close()
+		}
+	}
+}
 
 // openFunc returns a function that opens a file dialog to load the content of a selected file into the EditWidget.
 //
